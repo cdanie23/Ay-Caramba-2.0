@@ -1,9 +1,6 @@
 package library;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
-import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -28,7 +25,10 @@ public class lib {
             String pathToBranchFolderCreated = null;
             // change the above just a placeholder for me
 
-            String base64EncodedString = client.getOutputStream().toString();
+            //TODO the following needs to be changed
+            BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+            String base64EncodedString = reader.readLine();
+
             System.out.println("Server:: Base64 encoded message -> " + base64EncodedString);
             PrintWriter pout = new PrintWriter(client.getOutputStream(), true);
             pout.println("OK");
