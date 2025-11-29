@@ -10,55 +10,64 @@ import java.util.Base64;
  */
 public class lib {
 
+    public static final String BRANCH_WEEKLY_SALES_TXT = "branch_weekly_sales.txt";
+    public static final String LOG_FILE_PATH = "Server.log";
+    public static final String SERVER_ABBREVIATION = "Server:: ";
+
     /**
      * Handles the client connection
      * @param client the socket to the client connection
      */
     public static void handleClient(Socket client) {
-        System.out.println("Server:: Client's IP is -> " + client.getInetAddress().getHostAddress());
+        logMsg("Client's IP is -> " + client.getInetAddress().getHostAddress());
 
         try (BufferedReader in = new BufferedReader(
                 new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter out = new PrintWriter(client.getOutputStream(), true)) {
 
-            String line1 = in.readLine();
-            if (line1 == null || !line1.startsWith("bcode~") || line1.length() <= "bcode~".length()) {
-                throw new IllegalArgumentException("Invalid branch code message: " + line1);
-            }
-            String branchCode = line1.substring("bcode~".length()).trim();
-            System.out.println("Server:: Branch code received -> " + branchCode);
-
-            File branchFolder = new File("Data", branchCode);
-            if (!branchFolder.exists() && !branchFolder.mkdirs()) {
-                throw new IllegalStateException("Failed to create folder: " + branchFolder.getPath());
-            }
+            String branchCode = in.readLine();
+            File branchFolder = createBranchFolder(branchCode);
 
             out.println("OK");
-            System.out.println("Server:: Sent OK after branch folder creation");
+            logMsg("Sent OK after branch folder creation");
 
             String payload = in.readLine();
             if (payload == null) {
                 throw new IOException("Missing Base64 payload from client");
             }
-            System.out.println("Server:: Encoded payload length -> " + payload.length());
+            logMsg("Encoded payload length -> " + payload.length());
 
             out.println("OK");
 
             processData(payload, branchFolder.getPath());
 
         } catch (Exception e) {
-            System.err.println("Server:: error: " + e.getMessage());
+            logMsg("error: " + e.getMessage());
         } finally {
             try { client.close(); } catch (IOException ignore) { }
-            System.out.println("Server:: Connection closed");
+            logMsg("Connection closed");
         }
+    }
+
+    private static File createBranchFolder(String branchCode) {
+        if (branchCode == null || !branchCode.startsWith("bcode~") || branchCode.length() <= "bcode~".length()) {
+            throw new IllegalArgumentException("Invalid branch code message: " + branchCode);
+        }
+        String trimmedBranchCode = branchCode.substring("bcode~".length()).trim();
+        logMsg("Branch code received -> " + trimmedBranchCode);
+
+        File branchFolder = new File("Data", trimmedBranchCode);
+        if (!branchFolder.exists() && !branchFolder.mkdirs()) {
+            throw new IllegalStateException("Failed to create folder: " + branchFolder.getPath());
+        }
+        return branchFolder;
     }
 
     private static void processData(String base64EncodedString, String branchFolderPath) {
         String trimmedData = base64EncodedString.replaceAll("~", "");
         String data = decodeBase64(trimmedData);
-        System.out.println("Server:: Data received -> " + data);
-        File weekly_sales = new File(branchFolderPath + "/branch_weekly_sales.txt");
+        logMsg("Data decoded -> " + data);
+        File weekly_sales = new File(branchFolderPath, BRANCH_WEEKLY_SALES_TXT);
         try (FileWriter fw = new FileWriter(weekly_sales, false)) {
             fw.write(data);
         } catch (IOException exception) {
@@ -70,5 +79,16 @@ public class lib {
         Base64.Decoder decoder = Base64.getDecoder();
         byte[] decodedBytes = decoder.decode(base64EncodedString);
         return new String(decodedBytes, StandardCharsets.UTF_8);
+    }
+
+    private static synchronized void logMsg(String msg) {
+        try (FileWriter fw = new FileWriter(LOG_FILE_PATH, true)) {
+            fw.write(SERVER_ABBREVIATION + msg);
+            fw.write(System.lineSeparator());
+            System.out.println(SERVER_ABBREVIATION + msg);
+        } catch (IOException exception) {
+            System.err.println(exception.getMessage());
+        }
+
     }
 }

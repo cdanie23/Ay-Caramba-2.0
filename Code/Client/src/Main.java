@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 public class Main {
     private static final String SERVER_HOST = "127.0.0.1";
     private static final int SERVER_PORT = 5050;
-    private static final File INPUT_FILE = new File("Data/ALBNM/branch_weekly_sales.txt");
+    private static final File INPUT_FILE = new File("Data/CHANC/branch_weekly_sales.txt");
 
     /**
      * Launches the client and initiates the data transfer for a single branch file.
