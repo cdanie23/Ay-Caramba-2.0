@@ -1,15 +1,105 @@
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
-    public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Client entry point
+ */
+public class Main {
+    private static final String SERVER_HOST = "127.0.0.1";
+    private static final int SERVER_PORT = 5050;
+    private static final File INPUT_FILE = new File("Data/ALBNM/branch_weekly_sales.txt");
+
+    /**
+     * Launches the client and initiates the data transfer for a single branch file.
+     */
+    public static void main(String[] args) {
+        start_data_transfer(INPUT_FILE, SERVER_HOST, SERVER_PORT);
+    }
+
+    /**
+     * Executes the client protocol for one input file.
+     *
+     * @param inputFile branch_weekly_sales.txt to transmit
+     * @param host      server host
+     * @param port      server port
+     * @throws IllegalArgumentException if inputFile is null or missing
+     */
+    public static void start_data_transfer(File inputFile, String host, int port) {
+        try {
+            String fileContent = lib.readFileUtf8(requireFile(inputFile));
+            String branchCode = extractBranchCode(fileContent);
+
+            lib.logInfo("client connected");
+            lib.logInfo("Sending " + branchCode);
+
+            try (Socket socket = new Socket(host, port);
+                 BufferedReader in = new BufferedReader(
+                         new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                 PrintWriter out = new PrintWriter(
+                         new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)) {
+
+                System.out.println("Client:: connected to server");
+
+                out.println("bcode~" + branchCode);
+                String ack1 = in.readLine();
+
+                String base64 = lib.encode_to_base_64(fileContent);
+                String wrapped = "~" + base64 + "~";
+
+                if (!"OK".equals(ack1)) {
+                    System.out.println("Client:: unexpected response (phase 1): " + ack1);
+                }
+
+                out.println(wrapped);
+                String ack2 = in.readLine();
+
+                if (!"OK".equals(ack2)) {
+                    System.out.println("Client:: unexpected response (phase 2): " + ack2);
+                }
+
+                System.out.println("File was transferred successfully");
+            } finally {
+                lib.logInfo("client closed connection");
+            }
+        } catch (Exception e) {
+            System.err.println("Client:: error: " + e.getMessage());
+            lib.logError("client error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Returns the first CSV token (branch code) from the first line of content.
+     *
+     * @param content file content
+     * @return branch code token
+     * @throws IllegalStateException if content is malformed
+     */
+    private static String extractBranchCode(String content) {
+        String firstLine = content.split("\\R", 2)[0];
+        String[] tokens = firstLine.split(",");
+        if (tokens.length < 1) {
+            throw new IllegalStateException("Cannot extract branch code");
+        }
+        return tokens[0].trim();
+    }
+
+    /**
+     * Validates the file reference.
+     *
+     * @param file candidate file
+     * @return file if valid
+     * @throws IllegalArgumentException if null or non-existent
+     */
+    private static File requireFile(File file) {
+        if (file == null || !file.isFile()) {
+            throw new IllegalArgumentException("Input file is missing: " + file);
+        }
+        return file;
     }
 }
