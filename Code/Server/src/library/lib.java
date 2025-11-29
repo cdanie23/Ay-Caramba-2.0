@@ -17,25 +17,40 @@ public class lib {
     public static void handleClient(Socket client) {
         System.out.println("Server:: Client's IP is -> " + client.getInetAddress().getHostAddress());
 
-        try {
-            //TODO El's part of the server program goes here
-            // NOTE FOR EL: the working directory of this module i.e the server program is
-            // Server/.... whatever you want to create a path to
-            // that is where the start is for all paths in the server module
-            String pathToBranchFolderCreated = null;
-            // change the above just a placeholder for me
+        try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+             PrintWriter out = new PrintWriter(client.getOutputStream(), true)) {
 
-            //TODO the following needs to be changed
-            BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
-            String base64EncodedString = reader.readLine();
+            String line1 = in.readLine();
+            if (line1 == null || !line1.startsWith("bcode~") || line1.length() <= "bcode~".length()) {
+                throw new IllegalArgumentException("Invalid branch code message: " + line1);
+            }
+            String branchCode = line1.substring("bcode~".length()).trim();
+            System.out.println("Server:: Branch code received -> " + branchCode);
 
-            System.out.println("Server:: Base64 encoded message -> " + base64EncodedString);
-            PrintWriter pout = new PrintWriter(client.getOutputStream(), true);
-            pout.println("OK");
-            client.close();
-            processData(base64EncodedString, pathToBranchFolderCreated);
-        } catch (Exception exception) {
-            System.err.println(exception.getMessage());
+            File branchFolder = new File("Data", branchCode);
+            if (!branchFolder.exists() && !branchFolder.mkdirs()) {
+                throw new IllegalStateException("Failed to create folder: " + branchFolder.getPath());
+            }
+
+            out.println("OK");
+            System.out.println("Server:: Sent OK after branch folder creation");
+
+            String payload = in.readLine();
+            if (payload == null) {
+                throw new IOException("Missing Base64 payload from client");
+            }
+            System.out.println("Server:: Encoded payload length -> " + payload.length());
+
+            out.println("OK");
+
+            processData(payload, branchFolder.getPath());
+
+        } catch (Exception e) {
+            System.err.println("Server:: error: " + e.getMessage());
+        } finally {
+            try { client.close(); } catch (IOException ignore) { }
+            System.out.println("Server:: Connection closed");
         }
     }
 
