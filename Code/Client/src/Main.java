@@ -6,6 +6,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
 
 /**
  * Client entry point
@@ -13,13 +14,18 @@ import java.nio.charset.StandardCharsets;
 public class Main {
     private static final String SERVER_HOST = "127.0.0.1";
     private static final int SERVER_PORT = 5050;
-    private static final File INPUT_FILE = new File("Data/CHANC/branch_weekly_sales.txt");
 
     /**
      * Launches the client and initiates the data transfer for a single branch file.
      */
     public static void main(String[] args) {
-        start_data_transfer(INPUT_FILE, SERVER_HOST, SERVER_PORT);
+        System.out.println("Please enter the branch name" + System.lineSeparator());
+
+        Scanner scanner = new Scanner(System.in);
+        String branchName = scanner.nextLine();
+        scanner.close();
+        File inputFile = new File("Data/" + branchName + "/branch_weekly_sales.txt");
+        start_data_transfer(inputFile, SERVER_HOST, SERVER_PORT);
     }
 
     /**
